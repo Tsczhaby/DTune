@@ -2,7 +2,7 @@ name: Build APK
 
 on:
   push:
-    branches: [ main ]
+    branches: [ codex/create-architecture-framework-for-music-player-app ]
   workflow_dispatch:
 
 jobs:
@@ -24,3 +24,4 @@ jobs:
         with:
           name: app-release
           path: build/app/outputs/flutter-apk/app-release.apk
+
