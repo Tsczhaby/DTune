@@ -3,10 +3,24 @@ import 'package:flutter/material.dart';
 import '../../widgets/dtune_logo.dart';
 import '../authentication/login_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
   static const routeName = '/home';
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  final PageController _pageController = PageController(initialPage: 1);
+  int _currentPage = 1;
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   void _onLogout(BuildContext context) {
     Navigator.of(context).pushReplacementNamed(LoginScreen.routeName);
@@ -14,7 +28,7 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
 
     return Scaffold(
       appBar: AppBar(
@@ -33,93 +47,82 @@ class HomeScreen extends StatelessWidget {
         ],
       ),
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const DTuneLogo(size: 56),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Welcome back, Listener!',
-                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Your Navidrome library will appear here once connected.',
-                          style: Theme.of(context).textTheme.bodyMedium,
-                        ),
-                      ],
+                  const SizedBox(height: 16),
+                  Text(
+                    'Swipe between sections',
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Social • Home • Library',
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 16),
+                  _PageIndicator(
+                    currentPage: _currentPage,
+                    pageCount: 3,
                   ),
                 ],
               ),
-              const SizedBox(height: 32),
-              Expanded(
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth > 600;
-                    return GridView.count(
-                      crossAxisCount: isWide ? 3 : 2,
-                      mainAxisSpacing: 16,
-                      crossAxisSpacing: 16,
-                      childAspectRatio: 1.2,
-                      children: const [
-                        _HomePlaceholderCard(
-                          icon: Icons.library_music_outlined,
-                          title: 'Library',
-                          description: 'Browse your albums, artists, and tracks.',
-                        ),
-                        _HomePlaceholderCard(
-                          icon: Icons.queue_music_outlined,
-                          title: 'Playlists',
-                          description: 'Curate playlists synced from Navidrome.',
-                        ),
-                        _HomePlaceholderCard(
-                          icon: Icons.podcasts_outlined,
-                          title: 'Podcasts',
-                          description: 'Access your favorite podcasts and shows.',
-                        ),
-                        _HomePlaceholderCard(
-                          icon: Icons.download_outlined,
-                          title: 'Downloads',
-                          description: 'Manage offline content for on-the-go listening.',
-                        ),
-                        _HomePlaceholderCard(
-                          icon: Icons.search,
-                          title: 'Search',
-                          description: 'Find artists, albums, playlists, or tracks.',
-                        ),
-                        _HomePlaceholderCard(
-                          icon: Icons.equalizer,
-                          title: 'Now Playing',
-                          description: 'Control playback and view the queue.',
-                        ),
-                      ],
-                    );
-                  },
-                ),
+            ),
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                onPageChanged: (page) {
+                  setState(() {
+                    _currentPage = page;
+                  });
+                },
+                children: const [
+                  _PlaceholderPage(label: 'WIP - Social'),
+                  _PlaceholderPage(label: 'WIP - Home Screen'),
+                  _PlaceholderPage(label: 'WIP - Library'),
+                ],
               ),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: Icon(
-                    Icons.link,
-                    color: colorScheme.primary,
-                  ),
-                  label: const Text('Connect to Navidrome'),
-                ),
-              )
-            ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _PlaceholderPage extends StatelessWidget {
+  const _PlaceholderPage({
+    required this.label,
+  });
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(32),
+          border: Border.all(color: colorScheme.outlineVariant),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: textTheme.headlineSmall?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
+            textAlign: TextAlign.center,
           ),
         ),
       ),
@@ -127,54 +130,36 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-class _HomePlaceholderCard extends StatelessWidget {
-  const _HomePlaceholderCard({
-    required this.icon,
-    required this.title,
-    required this.description,
+class _PageIndicator extends StatelessWidget {
+  const _PageIndicator({
+    required this.currentPage,
+    required this.pageCount,
   });
 
-  final IconData icon;
-  final String title;
-  final String description;
+  final int currentPage;
+  final int pageCount;
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: colorScheme.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: colorScheme.outlineVariant),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(icon, size: 32, color: colorScheme.primary),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+    return Row(
+      children: List.generate(
+        pageCount,
+        (index) => Padding(
+          padding: const EdgeInsets.only(right: 8),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 250),
+            curve: Curves.easeInOut,
+            height: 8,
+            width: currentPage == index ? 24 : 8,
+            decoration: BoxDecoration(
+              color: currentPage == index
+                  ? colorScheme.primary
+                  : colorScheme.outlineVariant,
+              borderRadius: BorderRadius.circular(99),
             ),
-            const SizedBox(height: 8),
-            Text(
-              description,
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-            const Spacer(),
-            Align(
-              alignment: Alignment.bottomRight,
-              child: Icon(
-                Icons.arrow_forward,
-                color: colorScheme.primary,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
