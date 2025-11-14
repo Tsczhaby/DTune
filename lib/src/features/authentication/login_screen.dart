@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../widgets/dtune_logo.dart';
 import '../home/home_screen.dart';
+import 'subsonic_auth_service.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,20 +19,97 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
 
+  late final SubsonicAuthService _authService;
   bool _rememberMe = true;
+  bool _isSubmitting = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _serverController.text = 'http://4.180.15.163:4533';
+    _authService = SubsonicAuthService();
+  }
 
   @override
   void dispose() {
     _serverController.dispose();
     _usernameController.dispose();
     _passwordController.dispose();
+    _authService.dispose();
     super.dispose();
   }
 
-  void _onSubmit() {
-    if (_formKey.currentState?.validate() ?? false) {
-      Navigator.of(context).pushReplacementNamed(HomeScreen.routeName);
+  Future<void> _onSubmit() async {
+    final form = _formKey.currentState;
+    if (form == null || !form.validate()) {
+      return;
     }
+
+    FocusScope.of(context).unfocus();
+
+    setState(() {
+      _isSubmitting = true;
+      _errorMessage = null;
+    });
+
+    final serverUrl = _serverController.text.trim();
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text;
+
+    try {
+      final uri = _parseServerUrl(serverUrl);
+      await _authService.authenticate(
+        baseUrl: uri,
+        username: username,
+        password: password,
+      );
+
+      if (!mounted) {
+        return;
+      }
+
+      Navigator.of(context).pushReplacementNamed(HomeScreen.routeName);
+    } on SubsonicAuthException catch (error) {
+      setState(() {
+        _errorMessage = error.message;
+      });
+    } on Object {
+      setState(() {
+        _errorMessage = 'Something went wrong. Please try again.';
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  Uri _parseServerUrl(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      throw const SubsonicAuthException(
+        'Please enter your Navidrome server URL.',
+      );
+    }
+
+    final initial = Uri.tryParse(trimmed);
+    if (initial == null) {
+      throw const SubsonicAuthException('The provided server URL is invalid.');
+    }
+
+    if (initial.hasScheme) {
+      return initial;
+    }
+
+    final withScheme = Uri.tryParse('https://$trimmed');
+    if (withScheme == null) {
+      throw const SubsonicAuthException('The provided server URL is invalid.');
+    }
+
+    return withScheme;
   }
 
   @override
@@ -72,6 +150,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           keyboardType: TextInputType.url,
                           autofillHints: const [AutofillHints.url],
+                          enabled: !_isSubmitting,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your Navidrome server URL';
@@ -87,6 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             prefixIcon: Icon(Icons.person),
                           ),
                           autofillHints: const [AutofillHints.username],
+                          enabled: !_isSubmitting,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your username';
@@ -103,6 +183,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           obscureText: true,
                           autofillHints: const [AutofillHints.password],
+                          enabled: !_isSubmitting,
                           validator: (value) {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your password';
@@ -115,16 +196,18 @@ class _LoginScreenState extends State<LoginScreen> {
                           children: [
                             Checkbox(
                               value: _rememberMe,
-                              onChanged: (value) {
-                                setState(() {
-                                  _rememberMe = value ?? false;
-                                });
-                              },
+                              onChanged: _isSubmitting
+                                  ? null
+                                  : (value) {
+                                      setState(() {
+                                        _rememberMe = value ?? false;
+                                      });
+                                    },
                             ),
                             const Text('Remember me'),
                             const Spacer(),
                             TextButton(
-                              onPressed: () {},
+                              onPressed: _isSubmitting ? null : () {},
                               child: const Text('Forgot password?'),
                             ),
                           ],
@@ -132,12 +215,44 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 24),
                         SizedBox(
                           width: double.infinity,
-                          child: FilledButton.icon(
-                            onPressed: _onSubmit,
-                            icon: const Icon(Icons.login),
-                            label: const Text('Continue'),
+                          child: FilledButton(
+                            onPressed: _isSubmitting ? null : _onSubmit,
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (_isSubmitting) ...[
+                                    const SizedBox(
+                                      height: 20,
+                                      width: 20,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                      ),
+                                    ),
+                                  ] else ...[
+                                    const Icon(Icons.login),
+                                  ],
+                                  const SizedBox(width: 12),
+                                  Text(_isSubmitting ? 'Signing in...' : 'Continue'),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
+                        if (_errorMessage != null) ...[
+                          const SizedBox(height: 16),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              _errorMessage!,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                color: theme.colorScheme.error,
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),

@@ -13,8 +13,12 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
-  final PageController _pageController = PageController(initialPage: 1);
-  int _currentPage = 1;
+  static const _pageTitles = ['Social', 'Home', 'Library'];
+  static const _homePageIndex = 1;
+
+  final PageController _pageController =
+      PageController(initialPage: _homePageIndex);
+  int _currentPage = _homePageIndex;
 
   @override
   void dispose() {
@@ -24,6 +28,18 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _onLogout(BuildContext context) {
     Navigator.of(context).pushReplacementNamed(LoginScreen.routeName);
+  }
+
+  void _goToPage(int index) {
+    if (index == _currentPage) {
+      return;
+    }
+
+    _pageController.animateToPage(
+      index,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
+    );
   }
 
   @override
@@ -62,15 +78,16 @@ class _HomeScreenState extends State<HomeScreen> {
                       fontWeight: FontWeight.w600,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Social • Home • Library',
-                    style: theme.textTheme.bodyMedium,
+                  const SizedBox(height: 8),
+                  _PagerTabStrip(
+                    tabs: _pageTitles,
+                    currentIndex: _currentPage,
+                    onSelected: _goToPage,
                   ),
                   const SizedBox(height: 16),
                   _PageIndicator(
                     currentPage: _currentPage,
-                    pageCount: 3,
+                    pageCount: _pageTitles.length,
                   ),
                 ],
               ),
@@ -159,6 +176,102 @@ class _PageIndicator extends StatelessWidget {
                   : colorScheme.outlineVariant,
               borderRadius: BorderRadius.circular(99),
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PagerTabStrip extends StatelessWidget {
+  const _PagerTabStrip({
+    required this.tabs,
+    required this.currentIndex,
+    required this.onSelected,
+  });
+
+  final List<String> tabs;
+  final int currentIndex;
+  final ValueChanged<int> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final segmentWidth = constraints.maxWidth / tabs.length;
+
+        return SizedBox(
+          height: 48,
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: colorScheme.outlineVariant),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: Stack(
+                children: [
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    left: currentIndex * segmentWidth,
+                    width: segmentWidth,
+                    top: 0,
+                    bottom: 0,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary.withOpacity(0.12),
+                      ),
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      for (var i = 0; i < tabs.length; i++)
+                        Expanded(
+                          child: _TabButton(
+                            label: tabs[i],
+                            isSelected: currentIndex == i,
+                            onTap: () => onSelected(i),
+                          ),
+                        ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _TabButton extends StatelessWidget {
+  const _TabButton({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      child: Center(
+        child: Text(
+          label,
+          style: textTheme.labelLarge?.copyWith(
+            fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            color: isSelected ? colorScheme.primary : textTheme.labelLarge?.color,
           ),
         ),
       ),
