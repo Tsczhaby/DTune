@@ -27,7 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    _serverController.text = 'http://4.180.15.163:4533';
+    _serverController.text = SubsonicAuthService.defaultBaseUrlString;
     _authService = SubsonicAuthService();
   }
 
@@ -95,21 +95,19 @@ class _LoginScreenState extends State<LoginScreen> {
       );
     }
 
-    final initial = Uri.tryParse(trimmed);
-    if (initial == null) {
-      throw const SubsonicAuthException('The provided server URL is invalid.');
+    final normalizedInput =
+        trimmed.endsWith('/') ? trimmed.substring(0, trimmed.length - 1) : trimmed;
+
+    const requiredBase = SubsonicAuthService.defaultBaseUrlString;
+
+    if (normalizedInput != requiredBase) {
+      throw const SubsonicAuthException(
+        'This app is configured for http://4.180.15.163:4533. '
+        'Please use the bundled server URL.',
+      );
     }
 
-    if (initial.hasScheme) {
-      return initial;
-    }
-
-    final withScheme = Uri.tryParse('https://$trimmed');
-    if (withScheme == null) {
-      throw const SubsonicAuthException('The provided server URL is invalid.');
-    }
-
-    return withScheme;
+    return SubsonicAuthService.defaultBaseUri;
   }
 
   @override
@@ -145,7 +143,7 @@ class _LoginScreenState extends State<LoginScreen> {
                           controller: _serverController,
                           decoration: const InputDecoration(
                             labelText: 'Server URL',
-                            hintText: 'https://example.com',
+                            hintText: 'http://4.180.15.163:4533',
                             prefixIcon: Icon(Icons.dns),
                           ),
                           keyboardType: TextInputType.url,

@@ -1,8 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
-
-import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 
 /// A lightweight client that authenticates against a Subsonic-compatible API.
@@ -12,11 +9,10 @@ class SubsonicAuthService {
 
   static const _clientName = 'DTune';
   static const _apiVersion = '1.16.1';
-  static const _saltAlphabet =
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  static const defaultBaseUrlString = 'http://4.180.15.163:4533';
+  static final Uri defaultBaseUri = Uri.parse('$defaultBaseUrlString/');
 
   final http.Client _httpClient;
-  final Random _random = Random.secure();
 
   /// Attempts to authenticate with the provided [baseUrl], [username], and
   /// [password].
@@ -28,13 +24,9 @@ class SubsonicAuthService {
     required String username,
     required String password,
   }) async {
-    final salt = _generateSalt();
-    final token = md5.convert(utf8.encode('$password$salt')).toString();
-
     final pingUri = _buildPingUri(baseUrl, {
       'u': username,
-      't': token,
-      's': salt,
+      'p': password,
       'v': _apiVersion,
       'c': _clientName,
       'f': 'json',
@@ -102,32 +94,12 @@ class SubsonicAuthService {
     return ping.replace(queryParameters: queryParameters);
   }
 
-  Uri _normalizeBaseUrl(Uri uri) {
-    if (!uri.hasScheme) {
-      throw const SubsonicAuthException('Server URL must include a scheme.');
-    }
-    if (uri.scheme != 'http' && uri.scheme != 'https') {
-      throw const SubsonicAuthException('Server URL must use HTTP or HTTPS.');
-    }
+  Uri _normalizeBaseUrl(Uri _) {
+    final normalizedPath = defaultBaseUri.path.endsWith('/')
+        ? defaultBaseUri.path
+        : '${defaultBaseUri.path}/';
 
-    final normalizedPath = uri.path.isEmpty || uri.path == '/'
-        ? '/'
-        : uri.path.endsWith('/')
-            ? uri.path
-            : '${uri.path}/';
-
-    return uri.replace(path: normalizedPath);
-  }
-
-  String _generateSalt([int length = 16]) {
-    return String.fromCharCodes(
-      List.generate(
-        length,
-        (_) => _saltAlphabet.codeUnitAt(
-          _random.nextInt(_saltAlphabet.length),
-        ),
-      ),
-    );
+    return defaultBaseUri.replace(path: normalizedPath);
   }
 }
 
