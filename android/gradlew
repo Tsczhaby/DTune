@@ -1,0 +1,5 @@
+#!/usr/bin/env sh
+set -e
+export DEFAULT_JVM_OPTS=""
+DIR="$(cd "$(dirname "$0")" && pwd)"
+exec "$DIR/gradlew" "$@"
